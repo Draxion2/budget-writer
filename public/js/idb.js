@@ -43,3 +43,49 @@ function saveRecord(record) {
     // add record to store
     budgetObjectStore.add(record);
 };
+
+function uploadBudjet() {
+
+    // open transaction on db
+    const transaction = db.transaction(['new_budget'], 'readwrite');
+
+    // access the obj store for 'new_budget'
+    const budgetObjectStore = transaction.objectStore('new_budget');
+
+    // get all records
+    const getAll = budgetObjectStore.getAll();
+
+    // upon success, get all executes
+    getAll.onsuccess = function() {
+    
+    // if data exists, send to api server
+    if (getAll.result.length > 0) {
+      fetch('/api/transaction', {
+        method: 'POST',
+        body: JSON.stringify(getAll.result),
+        headers: {
+          Accept: 'application/json, text/plain, */*',
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(response => response.json())
+        .then(serverResponse => {
+          if (serverResponse.message) {
+            throw new Error(serverResponse);
+          }
+
+          const transaction = db.transaction(['new_budget'], 'readwrite');
+          const budgetObjectStore = transaction.objectStore('new_budget');
+          budgetObjectStore.clear();
+
+          alert('All saved budgets has been submitted!');
+        })
+        .catch(err => {
+          console.log(err);
+        });
+    }
+  };
+};
+
+// execute after app comes back online
+window.addEventListener('online', uploadBudjet);
